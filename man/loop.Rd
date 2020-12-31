@@ -2,27 +2,54 @@
 % Please edit documentation in R/main.R
 \name{loop}
 \alias{loop}
-\alias{loop2}
+\alias{looper}
 \title{loop on input}
 \usage{
-loop(fun)
+loop(fun, type = list)
 
-loop2(fun)
+looper(..., type = list)
 }
 \arguments{
-\item{fun}{}
+\item{fun}{function to be looped over}
+
+\item{type}{type of output, created via \code{as.type()} function call. A few special
+tokens are permitted:
+\itemize{
+\item \code{df_rows} - returns a data.frame, where each result is a row
+\item \code{mat_rows} - returns a matrix, where each result is a row
+\item \code{mat_cols} - returns a matrix, where each result is a column
+\item \code{simplify} - returns a simplified output, á la \code{sapply()}
+}}
 }
 \value{
 
 }
 \description{
-\code{loop} unifies \code{lapply} and \code{Map}, \code{loop2} unifies \code{sapply} and \code{mapply}.
-Both support a dollar notation so that we can leverage the autompletion of
-function arguments.
+\code{loop()} unifies \code{lapply} and \code{Map}. It supports a dollar notation so
+that we can leverage the autompletion of function arguments.
+Arguments to be looped on are prefixed with \code{+}.
+
+\code{looper()} works similarly to \code{loop()}, but it takes the looping
+arguments first, and then an expression to loop over. This is closer
+in appearance to a \verb{for()} loop
 }
 \examples{
+x <- loop(rnorm)(10,mean=+1:3)
+x
+
+loop(mean,numeric)(+x)
+
 l <- list(iris, cars)
 loop$head(+l, 1)
-loop$head(+l, +1:2)
-loop2$nrow()
+loop$head(+l, +1:2) # no need to worry about operator precedence
+
+
+looper(n=+1:3,mean=+1:3,
+  {
+    data.frame(col_1 = rnorm(n,mean),
+               col_2 = rnorm(n,2*mean)
+    )
+  }
+)
+
 }

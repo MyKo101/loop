@@ -15,11 +15,14 @@ knitr::opts_chunk$set(
 
 # loop
 
-*{loop}* contains two functions, 
-`loop` unifies `lapply` and `Map`, `loop2` unifies `sapply` and `mapply`.
+**`{loop}`** contains two functions:
+ 
+ * `loop()`, which unifies `lapply()`, `vapply()`, `sapply()` and `Map()`.
+ * `looper()`, which acts the same, but looks closer to a `for()` loop.
 
-Both support a dollar notation so that we can leverage the autompletion of
+`loop` supports a dollar notation so that we can leverage the autompletion of
 function arguments. Arguments to be looped on are prefixed with `+`.
+Outputs are simplified by `type` if provided.
 
 ```{r}
 library(loop)
@@ -31,8 +34,48 @@ loop$rep(+11:12, +1:2) # rather than `Map(rep, 11:12, 1:2)`
 loop$rep(+11:12, +1:2, each = 2) 
 
 l <- list(iris, cars)
-loop2$nrow(+l) # rather than `sapply(l, nrow)`
+loop(nrow, numeric)(+l) # rather than `vapply(l, nrow, numeric(1))`
 ```
+
+The `type` can be any of the usual atomic types such as `double`, 
+`numeric`, `character`, `logical`, plus any of four special tokens:
+
+ * `df_rows` - returns a data.frame, where each result is a row
+ * `mat_rows` - returns a matrix, where each result is a row
+ * `mat_cols` - returns a matrix, where each result is a column
+ * `simplify` - returns a simplified output, á la `sapply()`
+
+```{r}
+x <- loop(rnorm)(1000,+1:10)
+loop(mean,numeric)(+x)
+
+loop(rnorm,mat_rows)(3,+1:4) # returns a 4x3 matrix
+loop(rnorm,mat_cols)(3,+1:4) # returns a 3x4 matrix
+
+
+
+```
+`looper()` behaves more like `for()` in that it takes an _expression_ 
+provided between curly braces, `{` and `}`. The difference is that instead
+of looping over a single variable, `looper()` loops over multiple at once,
+just like `loop()`
+
+```{r}
+looper(
+  seed = +c(100,300,500),
+  n = +1:3, mean = +2:4,  sd = 1,
+            lower = +0:2, upper=5,
+  type = df_rows,
+  {
+    set.seed(seed)
+    data.frame(
+      col_1 = rnorm(n,mean,sd),
+      col_2 = runif(n,lower,upper)
+    )
+  }
+)
+```
+
 
 ## Installation
 
@@ -51,4 +94,4 @@ We get used to the apply functions, but :
 * The IDE highlights the apply function, not the applied function
 * No need to shuffle the arguments when going from `lapply` to `Map` or `sapply` to `mapply`
 * Much more compact to use constant arguments with `Map` and `sapply`
-* I believe its more intuitive to have the applied function first
+* I believe its more intuitive to have the applied function first and distinct from the arguments
