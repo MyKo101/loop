@@ -3,11 +3,9 @@
 
 # loop
 
-**`{loop}`** contains two functions:
-
-  - `loop()`, which unifies `lapply()`, `vapply()`, `sapply()` and
-    `Map()`.
-  - `looper()`, which acts the same, but looks closer to a `for()` loop.
+**`{loop}`** contains several functions to perform loops in interesting
+ways. The simplest function is `loop()`, which is built on by the other
+functions.
 
 `loop` supports a dollar notation so that we can leverage the
 autompletion of function arguments. Arguments to be looped on are
@@ -41,6 +39,11 @@ loop$rep(+11:12, +1:2, each = 2)
 #> 
 #> [[2]]
 #> [1] 12 12 12 12
+```
+
+Outputs from `loop()` can be simplified by type
+
+``` r
 
 l <- list(iris, cars)
 loop(nrow, numeric)(+l) # rather than `vapply(l, nrow, numeric(1))`
@@ -60,26 +63,94 @@ The `type` can be any of the usual atomic types such as `double`,
 ``` r
 x <- loop(rnorm)(1000,+1:10)
 loop(mean,numeric)(+x)
-#>  [1] 0.9776082 1.9395727 2.9770537 3.9329127 5.0152034 6.0604742 7.0422687
-#>  [8] 8.0472034 9.0415219 9.9954185
+#>  [1] 0.933951 2.020204 3.034272 3.999003 4.992944 6.071358 6.958827 8.024268
+#>  [9] 9.029840 9.943802
 
 loop(rnorm,mat_rows)(3,+1:4) # returns a 4x3 matrix
-#>           [,1]      [,2]      [,3]
-#> [1,] 0.8402669 0.8102785 0.2513152
-#> [2,] 2.6838310 1.7661374 1.6171371
-#> [3,] 4.1577052 1.8985105 3.2110182
-#> [4,] 3.5847946 3.8773371 2.7513435
+#>            [,1]      [,2]     [,3]
+#> [1,] -0.1004785 0.5808227 2.633305
+#> [2,]  1.5716095 2.9093270 2.822132
+#> [3,]  3.7435092 3.3989739 2.812274
+#> [4,]  4.7588610 3.0590316 4.834673
 loop(rnorm,mat_cols)(3,+1:4) # returns a 3x4 matrix
-#>          [,1]     [,2]     [,3]     [,4]
-#> [1,] 2.692200 3.720136 3.987687 6.158450
-#> [2,] 1.190785 3.866688 1.478082 3.423218
-#> [3,] 2.233132 2.252980 3.708424 2.626643
+#>             [,1]      [,2]     [,3]     [,4]
+#> [1,]  1.97397792 1.5689950 1.545367 3.797918
+#> [2,]  0.03702945 0.8972713 2.708236 3.301417
+#> [3,] -1.43275088 2.2960348 2.537689 4.621955
 ```
 
-`looper()` behaves more like `for()` in that it takes an *expression*
-provided between curly braces, `{` and `}`. The difference is that
-instead of looping over a single variable, `looper()` loops over
-multiple at once, just like `loop()`
+To make use of both the type return and the dollar notation, we also
+provide various wrapper functions around `loop(fun,type)` such as
+`loop_dbl()`, `loop_int()` and `loop_chr()`.
+
+``` r
+loop_dbl$mean(+x)
+#>  [1] 0.933951 2.020204 3.034272 3.999003 4.992944 6.071358 6.958827 8.024268
+#>  [9] 9.029840 9.943802
+loop_int$length(+x)
+#>  [1] 1000 1000 1000 1000 1000 1000 1000 1000 1000 1000
+loop_chr$paste0(+letters,+LETTERS)
+#>  [1] "aA" "bB" "cC" "dD" "eE" "fF" "gG" "hH" "iI" "jJ" "kK" "lL" "mM" "nN" "oO"
+#> [16] "pP" "qQ" "rR" "sS" "tT" "uU" "vV" "wW" "xX" "yY" "zZ"
+```
+
+When working with functions which take vectors as arguments, we would
+normally wrap variables in `c()` to pass them as a single argument. The
+parallel to this in `{loop}` is `c_loop()`
+
+``` r
+x <- rnorm(10)
+y <- rnorm(10)
+z <- rnorm(10)
+loop_dbl$mean(+c_loop(x,y,z))
+#>  [1]  0.61583026 -0.21181982  0.18549941  1.34721870  0.51858922 -0.01599143
+#>  [7] -1.23745289 -0.64744562  0.21819208  0.75766111
+```
+
+This is particularly useful in `tidyverse` evaluations, and allows for
+row-wise evaluation of commands.
+
+``` r
+df <- data.frame(
+  x = rnorm(3),
+  y = rnorm(3),
+  z = rnorm(3)
+)
+
+dplyr::mutate(df,m = loop_dbl$mean(+c_loop(x,y,z)))
+#>           x            y           z          m
+#> 1 0.1913415 -0.739228384 -1.10237129 -0.5500861
+#> 2 0.1450227 -0.005073902  0.91832300  0.3527573
+#> 3 1.5028149  0.082177053  0.02354768  0.5361799
+```
+
+A final example of where `c_loop()` can make iteration easier is in a
+`for()` loop. We can iterate through the `c_loop()` elements in
+parallel, by referring to them as elements of the iterator, either using
+`$` for named elements or their positional number
+
+``` r
+for(. in c_loop(a=1:3,b=2:4)){
+  print(.$a*.$b)
+}
+#> [1] 2
+#> [1] 6
+#> [1] 12
+
+for(. in c_loop(1:3,3:5)){
+  print(.[1]*.[2])
+}
+#> [1] 3
+#> [1] 8
+#> [1] 15
+```
+
+`looper()` also behaves like `for()` in that it takes an *expression*
+provided between curly braces, `{` and `}`. Much like the above, it can
+iterate over several variables at once using the same notation as
+`loop()`, except we don’t need to pre-pend variables with a `$`. Much
+like `loop()`, it returns a variable, which can be simplified with
+`type=`
 
 ``` r
 looper(

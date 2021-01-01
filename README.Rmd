@@ -15,10 +15,8 @@ knitr::opts_chunk$set(
 
 # loop
 
-**`{loop}`** contains two functions:
- 
- * `loop()`, which unifies `lapply()`, `vapply()`, `sapply()` and `Map()`.
- * `looper()`, which acts the same, but looks closer to a `for()` loop.
+**`{loop}`** contains several functions to perform loops in interesting ways.
+The simplest function is `loop()`, which is built on by the other functions.
 
 `loop` supports a dollar notation so that we can leverage the autompletion of
 function arguments. Arguments to be looped on are prefixed with `+`.
@@ -32,6 +30,10 @@ loop$rep(+11:12, +1:2) # rather than `Map(rep, 11:12, 1:2)`
 
 # rather than `Map(function(...) rep(..., each =2), 11:12, 1:2)` :
 loop$rep(+11:12, +1:2, each = 2) 
+```
+
+Outputs from `loop()` can be simplified by type
+```{r}
 
 l <- list(iris, cars)
 loop(nrow, numeric)(+l) # rather than `vapply(l, nrow, numeric(1))`
@@ -53,13 +55,64 @@ loop(rnorm,mat_rows)(3,+1:4) # returns a 4x3 matrix
 loop(rnorm,mat_cols)(3,+1:4) # returns a 3x4 matrix
 
 
+```
+
+To make use of both the type return and the dollar notation, we also
+provide various wrapper functions around `loop(fun,type)` such as `loop_dbl()`,
+`loop_int()` and `loop_chr()`.
+
+```{r}
+loop_dbl$mean(+x)
+loop_int$length(+x)
+loop_chr$paste0(+letters,+LETTERS)
+```
+When working with functions which take vectors as arguments, we would
+normally wrap variables in `c()` to pass them as a single argument.
+The parallel to this in `{loop}` is `c_loop()`
+
+```{r}
+x <- rnorm(10)
+y <- rnorm(10)
+z <- rnorm(10)
+loop_dbl$mean(+c_loop(x,y,z))
+```
+This is particularly useful in `tidyverse` evaluations, and allows
+for row-wise evaluation of commands.
+
+```{r}
+df <- data.frame(
+  x = rnorm(3),
+  y = rnorm(3),
+  z = rnorm(3)
+)
+
+dplyr::mutate(df,m = loop_dbl$mean(+c_loop(x,y,z)))
+```
+
+A final example of where `c_loop()` can make iteration easier is in
+a `for()` loop. We can iterate through the `c_loop()` elements in
+parallel, by referring to them as elements of the iterator, either 
+using `$` for named elements or their positional number
+
+```{r}
+for(. in c_loop(a=1:3,b=2:4)){
+  print(.$a*.$b)
+}
+
+for(. in c_loop(1:3,3:5)){
+  print(.[1]*.[2])
+}
 
 ```
-`looper()` behaves more like `for()` in that it takes an _expression_ 
-provided between curly braces, `{` and `}`. The difference is that instead
-of looping over a single variable, `looper()` loops over multiple at once,
-just like `loop()`
 
+
+
+`looper()` also behaves like `for()` in that it takes an _expression_ 
+provided between curly braces, `{` and `}`. Much like the above, it 
+can iterate over several variables at once using the same notation 
+as `loop()`, except we don't need to pre-pend variables with a `$`.
+Much like `loop()`, it returns a variable, which can be simplified with
+`type=`
 ```{r}
 looper(
   seed = +c(100,300,500),
